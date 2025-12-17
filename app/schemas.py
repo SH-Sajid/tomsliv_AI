@@ -1,17 +1,14 @@
 from pydantic import BaseModel, Field
 from typing import List, Dict, Any, Optional
 
+class JobDetails(BaseModel):
+    title: str = Field(..., description="Job title, e.g. 'Dairy Farm Worker'")
+    requirements: List[str] = Field(..., description="List of job requirements")
+    location: str = Field(..., description="Job location")
+    type: str = Field(..., description="Job type, e.g. 'Full-time'")
+
 class JobRequest(BaseModel):
-    job_details: Dict[str, Any] = Field(
-        ...,
-        description="Job requirements and details",
-        example={
-            "title": "Dairy Farm Worker",
-            "requirements": ["Cow milking experience", "Animal care skills"],
-            "location": "Rural Farm",
-            "type": "Full-time"
-        }
-    )
+    job_details: JobDetails = Field(..., description="Job requirements and details")
 
 class FitScore(BaseModel):
     score: int = Field(..., ge=0, le=100, description="Match score between 0-100")

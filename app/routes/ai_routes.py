@@ -11,7 +11,19 @@ router = APIRouter(prefix="/ai", tags=["AI"])
 
 @router.post("/process-candidate")
 async def process_candidate(
-    job: str = Form(...),  # Changed to str and use Form
+    job: str = Form(
+        ...,
+        description='''Job details in JSON format. Example:
+{
+  "job_details": {
+    "location": "Rural Farm",
+    "requirements": ["Cow milking experience", "Animal care skills"],
+    "title": "Dairy Farm Worker",
+    "type": "Full-time"
+  }
+}''',
+        example='{\n  "job_details": {\n    "location": "Rural Farm",\n    "requirements": ["Cow milking experience", "Animal care skills"],\n    "title": "Dairy Farm Worker",\n    "type": "Full-time"\n  }\n}'
+    ),
     resume: UploadFile = File(...)
 ):
     # Parse the JSON string to dict
@@ -33,9 +45,10 @@ async def process_candidate(
     # Get analysis from all AI services
     try:
         resume_analysis = analyze_resume(resume_text)
-        match_result = match_candidate(job_request.job_details, resume_text)
+        job_details_dict = job_request.job_details.model_dump()
+        match_result = match_candidate(job_details_dict, resume_text)
         summary = generate_summary(resume_text)
-        interview_questions = generate_questions(job_request.job_details, resume_text)
+        interview_questions = generate_questions(job_details_dict, resume_text)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error during AI processing: {str(e)}")
 
