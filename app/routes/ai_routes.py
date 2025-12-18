@@ -1,4 +1,5 @@
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException
+from typing import Optional
 from app.schemas import (
     JobCreationRequest, 
     JobCreationResponse,
@@ -18,41 +19,116 @@ router = APIRouter(prefix="/ai", tags=["AI"])
 
 @router.post("/process-candidate")
 async def process_candidate(
-    job: str = Form(
+    job_details: str = Form(
         ...,
-        description='''Job details in any JSON format. The JSON should contain job-related information such as title, requirements, location, type, etc. Example:
+        description='''Job details as a string or JSON format. Can include job title, requirements, location, type, etc. Example:
 {
   "title": "Dairy Farm Worker",
   "location": "Rural Farm",
   "requirements": ["Cow milking experience", "Animal care skills"],
   "type": "Full-time"
-}''',
+}
+Or simple text: "Looking for a dairy farm worker with milking experience"''',
         example='{\n  "title": "Dairy Farm Worker",\n  "location": "Rural Farm",\n  "requirements": ["Cow milking experience", "Animal care skills"],\n  "type": "Full-time"\n}'
     ),
-    resume: UploadFile = File(...)
+    ideal_candidate: Optional[str] = Form(
+        None,
+        description='''Ideal candidate description as a string or JSON format. Can include expected skills, experience, qualifications, etc. Example:
+{
+  "experience": "3+ years in dairy farming",
+  "skills": ["Milking", "Animal care", "Farm equipment operation"],
+  "education": "Agricultural background preferred"
+}
+Or simple text: "3+ years experience in dairy farming with strong animal care skills"''',
+        example='{\n  "experience": "3+ years in dairy farming",\n  "skills": ["Milking", "Animal care"],\n  "education": "Agricultural background"\n}'
+    ),
+    cv_json: Optional[str] = Form(
+        None,
+        description='''CV data in JSON format. If provided, this will be used instead of file upload. Example:
+{
+  "name": "John Smith",
+  "work_experience": [{"role": "Farm Worker", "duration": "2019-2023"}],
+  "skills": ["Milking", "Cattle care"],
+  "certifications": ["Animal Welfare Training"]
+}'''
+    ),
+    cv_file: Optional[UploadFile] = File(
+        None,
+        description="CV file upload (PDF, DOCX, TXT). Either cv_json or cv_file must be provided."
+    )
 ):
-    # Parse the JSON string to dict - accepts any JSON format
+    """
+    Process candidate CV against job details and ideal candidate profile.
+    
+    Accepts:
+    - job_details: Job description (string or JSON)
+    - ideal_candidate: Ideal candidate profile (string or JSON)
+    - CV input: Either as JSON string (cv_json) OR file upload (cv_file)
+    
+    Returns comprehensive candidate analysis including fit score, summary, strengths, etc.
+    """
+    
+    # Validate that at least one CV input is provided
+    if not cv_json and not cv_file:
+        raise HTTPException(
+            status_code=400, 
+            detail="Either cv_json or cv_file must be provided"
+        )
+    
+    # Parse job details (try JSON, fallback to string)
     try:
-        job_data = json.loads(job)
+        job_data = json.loads(job_details)
     except json.JSONDecodeError:
-        raise HTTPException(status_code=400, detail="Invalid JSON format for job data")
-
-    # Extract text from uploaded resume
-    try:
-        file_bytes = await resume.read()
-        resume_text = extract_text(file_bytes, resume.filename)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Error processing resume file: {str(e)}")
-
+        job_data = {"description": job_details}
+    
+    # Parse ideal candidate (try JSON, fallback to string)
+    ideal_candidate_data = {}
+    if ideal_candidate and ideal_candidate.strip():
+        try:
+            ideal_candidate_data = json.loads(ideal_candidate)
+        except json.JSONDecodeError:
+            ideal_candidate_data = {"description": ideal_candidate}
+    
+    # Get CV text - either from JSON or file
+    if cv_json:
+        try:
+            cv_data = json.loads(cv_json)
+            # Convert CV JSON to text format for processing
+            resume_text = json.dumps(cv_data, indent=2)
+        except json.JSONDecodeError:
+            raise HTTPException(
+                status_code=400, 
+                detail="Invalid JSON format for cv_json"
+            )
+    else:
+        # Extract text from uploaded file
+        try:
+            file_bytes = await cv_file.read()
+            resume_text = extract_text(file_bytes, cv_file.filename)
+        except Exception as e:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Error processing CV file: {str(e)}"
+            )
+    
+    # Combine job details and ideal candidate for analysis
+    combined_job_context = {
+        "job_details": job_data,
+        "ideal_candidate": ideal_candidate_data
+    }
+    
     # Get analysis from all AI services
     try:
         resume_analysis = analyze_resume(resume_text)
-        match_result = match_candidate(job_data, resume_text)
+        match_result = match_candidate(combined_job_context, resume_text)
         summary = generate_summary(resume_text)
-        interview_questions = generate_questions(job_data, resume_text)
+        interview_questions = generate_questions(combined_job_context, resume_text)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error during AI processing: {str(e)}")
-
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Error during AI processing: {str(e)}"
+        )
+    
     # Combine results in the desired output format
     return {
         "AI_fit_score": match_result["AI_fit_score"],
@@ -79,15 +155,14 @@ async def create_job(job_request: JobCreationRequest):
     The generated content is tailored to the specific farm details provided.
     """
     try:
-        # Convert Pydantic model to dictionary
         job_data = job_request.model_dump()
-        
-        # Generate job content using AI
         result = generate_job_content(job_data)
-        
         return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error generating job content: {str(e)}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Error generating job content: {str(e)}"
+        )
 
 
 @router.post("/compare-cvs", response_model=CVComparisonResponse)
@@ -104,14 +179,14 @@ async def compare_two_cvs(comparison_request: CVComparisonRequest):
     The comparison is more accurate when job context is provided.
     """
     try:
-        # Extract data from request
         cv_a = comparison_request.cv_a
         cv_b = comparison_request.cv_b
         job_context = comparison_request.job_context
         
-        # Perform CV comparison using AI
         result = compare_cvs(cv_a, cv_b, job_context)
-        
         return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error comparing CVs: {str(e)}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Error comparing CVs: {str(e)}"
+        )
