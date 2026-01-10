@@ -15,6 +15,9 @@ def extract_text(file_bytes: bytes, filename: str) -> str:
         doc = Document(io.BytesIO(file_bytes))
         return "\n".join(p.text for p in doc.paragraphs)
 
+    if ext == "txt":
+        return file_bytes.decode("utf-8")
+
     if ext in ["jpg", "jpeg", "png"]:
         image = Image.open(io.BytesIO(file_bytes))
         return pytesseract.image_to_string(image)

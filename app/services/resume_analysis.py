@@ -3,9 +3,9 @@ import json
 
 def analyze_resume(resume_text: str):
     prompt = f"""
-    Analyze this resume and extract the following information in JSON format:
+    Analyze this resume and cover letter (if provided) and extract the following information in JSON format:
 
-    Resume:
+    Resume and Cover Letter:
     {resume_text}
 
     Return a JSON object with this exact structure:
@@ -20,15 +20,19 @@ def analyze_resume(resume_text: str):
       "skills": ["skill1", "skill2", "skill3"],
       "certifications": ["certification1", "certification2"],
       "cover_letter_insights": {{
-        "motivation": "Brief description of candidate's motivation and interest",
+        "motivation": "Brief description of candidate's motivation and interest in the role",
         "key_traits": ["trait1", "trait2", "trait3"]
       }}
     }}
 
-    If cover letter is not available, infer motivation and traits from the resume content.
-    Extract all work experiences with their roles, durations, and key responsibilities.
-    List all technical and professional skills mentioned.
-    Include any certifications, training, or qualifications.
+    IMPORTANT INSTRUCTIONS:
+    - If a cover letter is present (marked with "--- COVER LETTER ---"), extract motivation and traits SPECIFICALLY from it.
+    - For cover_letter_insights, prioritize information found in the actual cover letter section.
+    - If no cover letter is available, infer motivation and traits from the resume content.
+    - Extract all work experiences with their roles, durations, and key responsibilities from the resume section.
+    - List all technical and professional skills mentioned in the resume.
+    - Include any certifications, training, or qualifications mentioned in the resume.
+    - Ensure cover_letter_insights reflect the candidate's genuine motivation and personality traits expressed in their cover letter.
     """
 
     response = client.chat.completions.create(
