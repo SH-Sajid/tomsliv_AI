@@ -1,0 +1,10 @@
+services:
+  tomsliv_ai:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: softvence/tomsliv_ai:latest   # add your Docker Hub username
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env

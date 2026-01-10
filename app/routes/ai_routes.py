@@ -55,6 +55,10 @@ Or simple text: "3+ years experience in dairy farming with strong animal care sk
     cv_file: Optional[UploadFile] = File(
         None,
         description="CV file upload (PDF, DOCX, TXT). Either cv_json or cv_file must be provided."
+    ),
+    cover_letter_file: Optional[UploadFile] = File(
+        None,
+        description="Cover letter file upload (PDF, DOCX, TXT). Optional field to supplement the CV."
     )
 ):
     """
@@ -64,8 +68,14 @@ Or simple text: "3+ years experience in dairy farming with strong animal care sk
     - job_details: Job description (string or JSON)
     - ideal_candidate: Ideal candidate profile (string or JSON)
     - CV input: Either as JSON string (cv_json) OR file upload (cv_file)
+    - cover_letter_file: Optional cover letter file (PDF, DOCX, TXT) to enhance analysis
     
-    Returns comprehensive candidate analysis including fit score, summary, strengths, etc.
+    The cover letter (if provided) will be analyzed alongside the CV to provide more accurate:
+    - Candidate motivation and key traits
+    - Job fit assessment
+    - Interview question generation
+    
+    Returns comprehensive candidate analysis including fit score, summary, strengths, cover letter insights, etc.
     """
     
     # Validate that at least one CV input is provided
@@ -111,6 +121,24 @@ Or simple text: "3+ years experience in dairy farming with strong animal care sk
                 detail=f"Error processing CV file: {str(e)}"
             )
     
+    # Get cover letter text if provided
+    cover_letter_text = ""
+    if cover_letter_file:
+        try:
+            file_bytes = await cover_letter_file.read()
+            cover_letter_text = extract_text(file_bytes, cover_letter_file.filename)
+        except Exception as e:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Error processing cover letter file: {str(e)}"
+            )
+    
+    # Combine CV and cover letter for analysis
+    if cover_letter_text:
+        combined_resume_text = f"{resume_text}\n\n--- COVER LETTER ---\n{cover_letter_text}"
+    else:
+        combined_resume_text = resume_text
+    
     # Combine job details and ideal candidate for analysis
     combined_job_context = {
         "job_details": job_data,
@@ -119,10 +147,10 @@ Or simple text: "3+ years experience in dairy farming with strong animal care sk
     
     # Get analysis from all AI services
     try:
-        resume_analysis = analyze_resume(resume_text)
-        match_result = match_candidate(combined_job_context, resume_text)
-        summary = generate_summary(resume_text)
-        interview_questions = generate_questions(combined_job_context, resume_text)
+        resume_analysis = analyze_resume(combined_resume_text)
+        match_result = match_candidate(combined_job_context, combined_resume_text)
+        summary = generate_summary(combined_resume_text)
+        interview_questions = generate_questions(combined_job_context, combined_resume_text)
     except Exception as e:
         raise HTTPException(
             status_code=500, 
