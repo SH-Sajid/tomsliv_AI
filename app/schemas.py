@@ -218,7 +218,7 @@ class CVComparisonRequest(BaseModel):
                         }
                     ],
                     "skills": ["Team Leadership", "Herd Management", "Machinery Operation"],
-                    "certifications": ["Farm Management Certificate", "Tractor Operation License"]
+                    "certifications": ["Farm Management Certificate", "Tractor Operation Licence"]
                 },
                 "job_context": "Looking for a Farm Manager to oversee a 1200-hectare dairy farm with 60 cows. Must have leadership experience and technical knowledge."
             }
