@@ -25,9 +25,22 @@ def compare_cvs(cv_a: dict, cv_b: dict, job_context: str = None):
     """
     
     prompt = f"""
-    Compare these two candidates' CVs and provide a detailed analysis.
+    Please provide a comprehensive comparative analysis of both candidates' CVs, highlighting key differentiators, relative strengths, and suitability for the position.
     
-    Candidate A CV:
+    LANGUAGE REQUIREMENT: All output must be provided exclusively in professional New Zealand English (British/NZ spelling conventions).
+    Apply the following employer-standard NZ English spelling throughout:
+    • "analyse" not "analyze"
+    • "organisation" not "organization"
+    • "programme" not "program"
+    • "recognised" not "recognized"
+    • "organised" not "organized"
+    • "licence" not "license"
+    • "realise" not "realize"
+    • "strategised" not "strategized"
+    
+    Maintain professional, employer-standard terminology and formal analytical tone. Do not use American English spellings.
+    
+    Candidate A - CV Details:
     {json.dumps(cv_a, indent=2)}
     
     Candidate B CV:

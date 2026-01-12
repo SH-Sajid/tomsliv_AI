@@ -25,7 +25,19 @@ def generate_questions(job_context: dict, resume_text: str):
         ideal_candidate_prompt = f"Ideal Candidate Profile:\n{json.dumps(ideal_candidate, indent=2)}"
 
     prompt = f"""
-    Generate 5 relevant interview questions based on the job requirements, ideal candidate profile (if provided), and the candidate's resume.
+    Please generate 5 strategically-designed interview questions based on the position requirements, ideal candidate profile (if provided), and the candidate's resume.
+    
+    LANGUAGE REQUIREMENT: All questions must be drafted exclusively in professional New Zealand English (British/NZ spelling conventions).
+    Apply the following employer-standard NZ English spelling throughout:
+    • "analyse" not "analyze"
+    • "organised" not "organized"
+    • "recognised" not "recognized"
+    • "programme" not "program"
+    • "organisation" not "organization"
+    • "realise" not "realize"
+    • "prioritise" not "prioritize"
+    
+    Draft questions using formal, professional employer language appropriate for a structured interview process. Do not use American English spellings.
     
     The questions should:
     {assessment_instruction}

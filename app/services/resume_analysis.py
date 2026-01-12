@@ -3,7 +3,19 @@ import json
 
 def analyze_resume(resume_text: str):
     prompt = f"""
-    Analyze this resume and cover letter (if provided) and extract the following information in JSON format:
+    Please analyse this resume and cover letter (if provided) and extract the following information in a structured JSON format.
+    
+    LANGUAGE REQUIREMENT: All output must be provided exclusively in professional New Zealand English (British/NZ spelling conventions).
+    Apply the following employer-standard NZ English spelling throughout:
+    • "analyse" not "analyze"
+    • "organised" not "organized"  
+    • "recognised" not "recognized"
+    • "programme" not "program"
+    • "licence" not "license"
+    • "prioritise" not "prioritize"
+    • "realise" not "realize"
+    
+    Maintain professional, employer-standard terminology throughout. Do not use American English spellings or terminology.
 
     Resume and Cover Letter:
     {resume_text}
@@ -27,7 +39,7 @@ def analyze_resume(resume_text: str):
 
     IMPORTANT INSTRUCTIONS:
     - If a cover letter is present (marked with "--- COVER LETTER ---"), extract motivation and traits SPECIFICALLY from it.
-    - For cover_letter_insights, prioritize information found in the actual cover letter section.
+    - For cover_letter_insights, prioritise information found in the actual cover letter section.
     - If no cover letter is available, infer motivation and traits from the resume content.
     - Extract all work experiences with their roles, durations, and key responsibilities from the resume section.
     - List all technical and professional skills mentioned in the resume.

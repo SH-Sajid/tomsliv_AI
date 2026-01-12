@@ -2,11 +2,22 @@ from app.config import client
 
 def generate_summary(resume_text: str):
     prompt = f"""
-    Write a short, clear professional summary (2-3 sentences) about this candidate.
-    The summary should be concise and highlight their key experience and suitability.
-    Write it in a way that's easy to understand and gives a quick overview of the candidate.
+    Please prepare a concise professional summary (2-3 sentences) of the candidate's qualifications and suitability for the position.
+    The summary should be clear, concise, and provide a professional overview of the candidate's relevant experience and capabilities.
+    
+    LANGUAGE REQUIREMENT: All output must be provided exclusively in professional New Zealand English (British/NZ spelling conventions).
+    Apply the following employer-standard NZ English spelling throughout:
+    • "analyse" not "analyze"
+    • "recognised" not "recognized"
+    • "organised" not "organized"
+    • "programme" not "program"
+    • "licence" not "license"
+    • "organisation" not "organization"
+    • "realise" not "realize"
+    
+    Use formal, professional terminology suitable for employer documentation. Do not use American English spellings.
 
-    Resume:
+    Candidate's Resume:
     {resume_text}
 
     Return only the summary text, no JSON formatting needed.

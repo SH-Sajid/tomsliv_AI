@@ -70,7 +70,7 @@ Or simple text: "3+ years experience in dairy farming with strong animal care sk
     - CV input: Either as JSON string (cv_json) OR file upload (cv_file)
     - cover_letter_file: Optional cover letter file (PDF, DOCX, TXT) to enhance analysis
     
-    The cover letter (if provided) will be analyzed alongside the CV to provide more accurate:
+    The cover letter (if provided) will be analysed alongside the CV to provide more accurate:
     - Candidate motivation and key traits
     - Job fit assessment
     - Interview question generation

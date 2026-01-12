@@ -31,9 +31,22 @@ def match_candidate(job_context: dict, resume_text: str):
         ideal_candidate_prompt = f"Ideal Candidate Profile:\n{json.dumps(ideal_candidate, indent=2)}"
 
     prompt = f"""
-    Compare the job requirements and ideal candidate profile (if provided) with the candidate's resume and provide a detailed matching analysis.
+    Please conduct a comprehensive analysis comparing the candidate's resume with the position requirements and ideal candidate profile (if provided).
+    
+    LANGUAGE REQUIREMENT: All output must be provided exclusively in professional New Zealand English (British/NZ spelling conventions).
+    Apply the following employer-standard NZ English spelling throughout:
+    • "analyse" not "analyze"
+    • "organisation" not "organization"
+    • "recognised" not "recognized"
+    • "programme" not "program"
+    • "prioritise" not "prioritize"
+    • "organised" not "organized"
+    • "realise" not "realize"
+    • "strategised" not "strategized"
+    
+    Maintain professional, employer-standard terminology and formal tone throughout. Do not use American English spellings.
 
-    Job Details:
+    Position Requirements:
     {json.dumps(job_details, indent=2)}
 
     {ideal_candidate_prompt}
@@ -41,7 +54,7 @@ def match_candidate(job_context: dict, resume_text: str):
     Candidate's Resume:
     {resume_text}
 
-    Analyze how well the candidate matches:
+    Analyse how well the candidate matches:
     {match_instruction}
     
     Return a JSON object with this exact structure:

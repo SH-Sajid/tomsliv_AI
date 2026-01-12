@@ -13,9 +13,23 @@ def generate_job_content(job_data: dict):
     """
     
     prompt = f"""
-    Based on the following job information, generate a comprehensive job description and benefits/perks section.
+    Based on the following position details, please prepare a comprehensive and professional job description and benefits/remuneration summary suitable for publication to potential candidates.
+    
+    LANGUAGE REQUIREMENT: All output must be provided exclusively in professional New Zealand English (British/NZ spelling conventions).
+    Apply the following employer-standard NZ English spelling throughout:
+    • "organisation" not "organization"
+    • "licence" not "license"
+    • "programme" not "program"
+    • "analyse" not "analyze"
+    • "recognised" not "recognized"
+    • "organised" not "organized"
+    • "realise" not "realize"
+    • "specialising" not "specializing"
+    
+    Maintain professional, employer-standard terminology and formal tone throughout. Do not use American English spellings.
+    Ensure content reflects New Zealand employment practices and industry standards.
 
-    Job Information:
+    Position Information:
     {json.dumps(job_data, indent=2)}
 
     Please create:
