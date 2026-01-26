@@ -1,4 +1,4 @@
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Query
 from typing import Optional
 from app.schemas import (
     JobCreationRequest, 
@@ -172,7 +172,11 @@ Or simple text: "3+ years experience in dairy farming with strong animal care sk
 
 
 @router.post("/create-job", response_model=JobCreationResponse)
-async def create_job(job_request: JobCreationRequest):
+async def create_job(
+    job_request: JobCreationRequest,
+    jobdescription: Optional[str] = Query(default="", description="User-provided job description context to enhance AI generation"),
+    benefitsAndPerks: Optional[str] = Query(default="", description="User-provided benefits and perks context to enhance AI generation")
+):
     """
     Generate AI-powered job description and benefits based on job information.
     
@@ -181,9 +185,15 @@ async def create_job(job_request: JobCreationRequest):
     - A detailed benefits and perks section
     
     The generated content is tailored to the specific farm details provided.
+    
+    You can optionally provide additional context in the jobdescription and benefitsAndPerks 
+    query parameters to influence the AI-generated output.
     """
     try:
         job_data = job_request.model_dump()
+        # Add the query parameters to job_data for processing
+        job_data["jobDescriptionText"] = jobdescription
+        job_data["benefitsAndPerksText"] = benefitsAndPerks
         result = generate_job_content(job_data)
         return result
     except Exception as e:

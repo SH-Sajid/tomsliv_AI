@@ -132,8 +132,8 @@ class JobCreationRequest(BaseModel):
     jobDescription: JobDescriptionInfo = Field(..., description="Job description details")
     workingInformation: WorkingInformation = Field(..., description="Working information and remuneration")
 
-    class Config:
-        json_schema_extra = {
+    model_config = {
+        "json_schema_extra": {
             "example": {
                 "basicInformation": {
                     "jobTitle": "Farm assistant",
@@ -167,6 +167,7 @@ class JobCreationRequest(BaseModel):
                 }
             }
         }
+    }
 
 class BenefitsAndPerks(BaseModel):
     description: str = Field(..., description="Benefits and perks description")
