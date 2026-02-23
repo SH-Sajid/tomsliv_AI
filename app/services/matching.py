@@ -31,8 +31,8 @@ def match_candidate(job_context: dict, resume_text: str):
         ideal_candidate_prompt = f"Ideal Candidate Profile:\n{json.dumps(ideal_candidate, indent=2)}"
 
     prompt = f"""
-    Please conduct a comprehensive analysis comparing the candidate's resume with the position requirements and ideal candidate profile (if provided).
-    
+    You are an expert dairy farm recruitment assessor. Your job is to evaluate this candidate objectively and differentiate clearly between average, strong, and exceptional applicants. Do not be overly complimentary of skills and experience if there is no explicit and detailed evidence of those skills and experience. For example, if the applicant lists "problem solving" as a skill, do not conclude that they have "demonstrated excellent problem-solving skills." You need to be specific, use evidence from the applicant's CV and Cover Letter and avoid generic statements.
+
     LANGUAGE REQUIREMENT: All output must be provided exclusively in professional New Zealand English (British/NZ spelling conventions).
     Apply the following employer-standard NZ English spelling throughout:
     • "analyse" not "analyze"
@@ -43,7 +43,7 @@ def match_candidate(job_context: dict, resume_text: str):
     • "organised" not "organized"
     • "realise" not "realize"
     • "strategised" not "strategized"
-    
+
     Maintain professional, employer-standard terminology and formal tone throughout. Do not use American English spellings.
 
     Position Requirements:
@@ -54,24 +54,58 @@ def match_candidate(job_context: dict, resume_text: str):
     Candidate's Resume:
     {resume_text}
 
-    Analyse how well the candidate matches:
-    {match_instruction}
-    
+    Follow these steps to evaluate the candidate:
+
+    STEP 1 – Assess Job Requirements (60%)
+    Score 0–60 based ONLY on how well the candidate meets the essential job requirements.
+    0–20 = Missing critical requirements
+    21–40 = Meets some requirements but gaps exist
+    41–50 = Meets most requirements competently
+    51–60 = Fully meets or exceeds all essential requirements
+    If the candidate lacks any stated non-negotiable requirement, cap this section at 35 maximum.
+
+    STEP 2 – Assess Ideal Candidate Profile (40%)
+    Score 0–40 based on alignment with the ideal traits, leadership ability, initiative, communication, culture fit, ambition, and long-term potential.
+    0–10 = Weak alignment
+    11–20 = Moderate alignment
+    21–30 = Strong alignment
+    31–40 = Exceptional alignment
+    Do NOT give high scores unless there is clear evidence.
+    If no ideal candidate profile is provided, assign a proportional score based on the general professionalism, initiative, communication, and long-term potential evident from the CV and cover letter alone.
+
+    STEP 3 – Calculate Final Score
+    Add both sections for a final score out of 100.
+    IMPORTANT:
+    Use the full range 0–100.
+    Avoid clustering in the 70–85 range.
+    Scores above 90 should be rare and near perfect.
+    Scores between 80 and 90 should be uncommon and for great candidates.
+    Scores between 70 and 80 should be common and for candidates who are a good fit but may lack desired traits.
+    Scores between 60 and 70 should be common and for candidates who could work on the farm but may not be a good match.
+    Scores below 60 should be used when key requirements are missing.
+    Differentiate decisively between candidates.
+    Fit-Score Caps are as follows:
+    - If the candidate has less than the preferred years of experience, then the fit score must not exceed 65.
+    - If the candidate has no dairy farming experience, then the fit score must not exceed 40.
+    - If the candidate is not eligible to work in New Zealand, then the fit score must not exceed 55.
+
+    STEP 4 – Output Format
     Return a JSON object with this exact structure:
     {{
       "AI_fit_score": {{
         "score": 0-100,
         "explanation": "Brief explanation of the score, {explanation_instruction}"
       }},
-      "strengths": ["strength 1", "strength 2", "strength 3"],
-      "areas_of_development": ["area 1", "area 2"]
+      "strengths": [
+        "Specific, evidence-based strength highlighting what the candidate does well relative to both the job and ideal profile, with concrete examples from the CV or cover letter.",
+        "Another specific strength with evidence..."
+      ],
+      "areas_of_development": [
+        "Clear gap relative to job and ideal profile. Assess staff management depth, decision-making exposure, financial awareness, readiness for role, and independent management where relevant. Identify exactly what skills or experiences the candidate needs to acquire. Note any important missing areas such as formal education, visa status, or ability to work in New Zealand.",
+        "Another specific area for development..."
+      ],
+      "summary": "3-5 sentence summary of the candidate's CV and cover letter explaining why they received the fit score they did. For example: John received a fit score of 60 because of his limited dairy farming experience and no prior staff management. Be specific about the candidate by name where possible."
     }}
-
-    The score should be a number between 0 and 100 based on:
-    {weighting_instruction}
-    
-    Strengths should highlight what the candidate does well {strengths_instruction}.
-    Areas of development should identify skills or experiences the candidate needs to improve or acquire {dev_instruction}.
     """
 
     response = client.chat.completions.create(

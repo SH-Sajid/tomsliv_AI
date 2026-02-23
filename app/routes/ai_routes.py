@@ -163,6 +163,7 @@ Or simple text: "3+ years experience in dairy farming with strong animal care sk
         "AI_generated_summary": summary,
         "strengths": match_result["strengths"],
         "areas_of_development": match_result["areas_of_development"],
+        "summary": match_result.get("summary", ""),
         "work_experience": resume_analysis["work_experience"],
         "skills": resume_analysis["skills"],
         "certifications": resume_analysis["certifications"],

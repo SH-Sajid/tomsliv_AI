@@ -28,9 +28,10 @@ class InterviewQuestions(BaseModel):
 
 class CandidateAnalysisResponse(BaseModel):
     AI_fit_score: FitScore
-    AI_generated_summary: str = Field(..., description="Brief summary of the candidate")
-    strengths: List[str] = Field(..., description="Candidate's key strengths")
-    areas_of_development: List[str] = Field(..., description="Areas for improvement")
+    AI_generated_summary: str = Field(..., description="Brief professional summary of the candidate")
+    strengths: List[str] = Field(..., description="Evidence-based strengths relative to the job and ideal profile")
+    areas_of_development: List[str] = Field(..., description="Clear gaps relative to the job and ideal profile, including staff management depth, decision-making exposure, financial awareness, readiness for role, independent management, and any missing information such as visa status or formal education")
+    summary: str = Field(default="", description="3-5 sentence explanation of why the candidate received their fit score, referencing specific evidence from the CV and cover letter")
     work_experience: List[WorkExperience]
     skills: List[str] = Field(..., description="List of candidate's skills")
     certifications: List[str] = Field(..., description="List of certifications")
@@ -41,25 +42,27 @@ class CandidateAnalysisResponse(BaseModel):
         json_schema_extra = {
             "example": {
                 "AI_fit_score": {
-                    "score": 86,
-                    "explanation": "Candidate meets most job requirements with strong hands-on experience but lacks advanced machinery exposure."
+                    "score": 62,
+                    "explanation": "John meets several core job requirements with 2 years of dairy experience but lacks the preferred 5+ years and has no demonstrated staff management experience."
                 },
-                "AI_generated_summary": "4 years of dairy farm experience with strong skills in milking and cattle care. Reliable and practical worker, suitable for medium to large farms.",
+                "AI_generated_summary": "John has 2 years of dairy farm experience focusing on milking and animal care. He is reliable but is early in his career and has not held a supervisory role.",
                 "strengths": [
-                    "Hands-on dairy farm experience",
-                    "Strong animal handling skills",
-                    "Consistent work history"
+                    "Has direct dairy farming experience including rotary milking shed operation at XYZ Farm (2022–2024), which directly aligns with the core milking requirement.",
+                    "Cover letter demonstrates genuine motivation for long-term farm work, citing a desire to grow into a management role."
                 ],
                 "areas_of_development": [
-                    "Farm equipment maintenance",
-                    "Exposure to automated systems"
+                    "No evidence of staff management or supervisory experience — the role requires overseeing 2–3 farm assistants.",
+                    "Financial awareness not demonstrated; no mention of budgeting, farm accounts, or input cost management.",
+                    "Visa status not mentioned in CV or cover letter — eligibility to work in New Zealand cannot be confirmed.",
+                    "Formal agricultural qualifications not listed; preferred candidates hold a Level 4 Primary ITO certificate or equivalent."
                 ],
+                "summary": "John received a fit score of 62 because, while he has relevant dairy farming experience, it falls short of the preferred 5 years and he has no staff management background. His CV does not address visa status or formal qualifications, which are important gaps for this role. He shows motivation and potential but is not yet ready for independent farm management.",
                 "work_experience": [
                     {
                         "role": "Dairy Farm Worker",
-                        "duration": "2019–2023",
+                        "duration": "2022–2024",
                         "responsibilities": [
-                            "Milking cows",
+                            "Rotary milking shed operation",
                             "Cattle feeding and care",
                             "Maintaining farm hygiene"
                         ]
@@ -74,20 +77,20 @@ class CandidateAnalysisResponse(BaseModel):
                     "Animal Welfare Training"
                 ],
                 "cover_letter_insights": {
-                    "motivation": "Candidate expresses strong interest in long-term farm work and animal care.",
+                    "motivation": "Candidate expresses strong interest in long-term farm work and growing into a management role.",
                     "key_traits": [
                         "Hardworking",
                         "Reliable",
-                        "Team-oriented"
+                        "Ambitious"
                     ]
                 },
                 "AI_suggested_interview_questions": {
                     "questions": [
                         "Can you describe your daily responsibilities at your previous farm?",
                         "How do you handle sick or injured animals?",
-                        "Have you worked with automated milking systems?",
-                        "How do you manage feeding schedules?",
-                        "What experience do you have maintaining farm equipment?"
+                        "Have you ever supervised or trained other farm workers?",
+                        "Are you currently eligible to work in New Zealand?",
+                        "What experience do you have with farm budgeting or financial reporting?"
                     ]
                 }
             }
