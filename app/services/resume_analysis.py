@@ -1,7 +1,7 @@
-from app.config import client
+from app.config import async_client
 import json
 
-def analyze_resume(resume_text: str):
+async def analyze_resume(resume_text: str):
     prompt = f"""
     Please analyse this resume and cover letter (if provided) and extract the following information in a structured JSON format.
     
@@ -47,7 +47,7 @@ def analyze_resume(resume_text: str):
     - Ensure cover_letter_insights reflect the candidate's genuine motivation and personality traits expressed in their cover letter.
     """
 
-    response = client.chat.completions.create(
+    response = await async_client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[{"role": "user", "content": prompt}],
         response_format={"type": "json_object"}

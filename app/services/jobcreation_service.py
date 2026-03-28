@@ -1,7 +1,7 @@
-from app.config import client
+from app.config import async_client
 import json
 
-def generate_job_content(job_data: dict):
+async def generate_job_content(job_data: dict):
     """
     Generate full job description and benefits/perks based on the provided job information.
     
@@ -72,7 +72,7 @@ def generate_job_content(job_data: dict):
     }}
     """
 
-    response = client.chat.completions.create(
+    response = await async_client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[{"role": "user", "content": prompt}],
         response_format={"type": "json_object"}

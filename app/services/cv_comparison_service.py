@@ -1,7 +1,7 @@
-from app.config import client
+from app.config import async_client
 import json
 
-def compare_cvs(cv_a: dict, cv_b: dict, job_context: str = None):
+async def compare_cvs(cv_a: dict, cv_b: dict, job_context: str = None):
     """
     Compare two CVs and provide detailed analysis of differences.
     
@@ -75,7 +75,7 @@ def compare_cvs(cv_a: dict, cv_b: dict, job_context: str = None):
     }}
     """
 
-    response = client.chat.completions.create(
+    response = await async_client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[{"role": "user", "content": prompt}],
         response_format={"type": "json_object"}

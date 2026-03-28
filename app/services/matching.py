@@ -1,117 +1,226 @@
-from app.config import client
+from app.config import async_client
 import json
 
-def match_candidate(job_context: dict, resume_text: str):
+async def match_candidate(job_context: dict, resume_text: str):
     """
     Match candidate against job requirements and ideal candidate profile.
     
-    job_context can contain:
-    - job_details: Job description/requirements
-    - ideal_candidate: Ideal candidate profile
+    TWO-PHASE APPROACH:
+    Phase 1: AI extracts structured matching data (what matches, what doesn't)
+    Phase 2: Python code calculates the score programmatically (consistent, dynamic)
     """
     
     job_details = job_context.get('job_details', {})
     ideal_candidate = job_context.get('ideal_candidate', {})
     
-    ideal_candidate_prompt = ""
-    weighting_instruction = "- How well the candidate matches the job requirements (60% weight)\n    - How close they are to the ideal candidate profile (40% weight)"
-    match_instruction = "1. The job requirements\n    2. The ideal candidate profile"
-    explanation_instruction = "mentioning what the candidate meets from both job requirements and ideal candidate profile, and what they lack"
-    strengths_instruction = "relative to both the job and ideal profile"
-    dev_instruction = "to match the ideal profile"
-
-    if not ideal_candidate:
-        ideal_candidate_prompt = "Ideal Candidate Profile: (Not provided)"
-        weighting_instruction = "- How well the candidate matches the job requirements (100% weight)"
-        match_instruction = "1. The job requirements"
-        explanation_instruction = "mentioning what the candidate meets from the job requirements and what they lack"
-        strengths_instruction = "relative to the job requirements"
-        dev_instruction = "to better fit the job requirements"
-    else:
+    has_ideal = bool(ideal_candidate)
+    
+    if has_ideal:
         ideal_candidate_prompt = f"Ideal Candidate Profile:\n{json.dumps(ideal_candidate, indent=2)}"
+    else:
+        ideal_candidate_prompt = "Ideal Candidate Profile: (Not provided)"
 
-    prompt = f"""
-    You are an expert dairy farm recruitment assessor. Your job is to evaluate this candidate objectively and differentiate clearly between average, strong, and exceptional applicants. Do not be overly complimentary of skills and experience if there is no explicit and detailed evidence of those skills and experience. For example, if the applicant lists "problem solving" as a skill, do not conclude that they have "demonstrated excellent problem-solving skills." You need to be specific, use evidence from the applicant's CV and Cover Letter and avoid generic statements.
+    # Build JSON template
+    if has_ideal:
+        json_template = """
+    {
+      "requirement_matches": [
+        {
+          "requirement": "requirement text",
+          "match_level": "strong",
+          "evidence": "specific CV evidence"
+        }
+      ],
+      "ideal_trait_matches": [
+        {
+          "trait": "trait text",
+          "matched": true,
+          "evidence": "specific CV evidence or No evidence found"
+        }
+      ],
+      "strengths": ["strength 1", "strength 2", "strength 3"],
+      "areas_of_development": ["gap 1", "gap 2", "gap 3"],
+      "candidate_name": "Name",
+      "has_dairy_specific_experience": true,
+      "has_relevant_certifications": true,
+      "work_eligibility_mentioned": true
+    }"""
+    else:
+        json_template = """
+    {
+      "requirement_matches": [
+        {
+          "requirement": "requirement text",
+          "match_level": "strong",
+          "evidence": "specific CV evidence"
+        }
+      ],
+      "strengths": ["strength 1", "strength 2", "strength 3"],
+      "areas_of_development": ["gap 1", "gap 2", "gap 3"],
+      "candidate_name": "Name",
+      "has_dairy_specific_experience": true,
+      "has_relevant_certifications": true,
+      "work_eligibility_mentioned": true
+    }"""
 
-    LANGUAGE REQUIREMENT: All output must be provided exclusively in professional New Zealand English (British/NZ spelling conventions).
-    Apply the following employer-standard NZ English spelling throughout:
-    • "analyse" not "analyze"
-    • "organisation" not "organization"
-    • "recognised" not "recognized"
-    • "programme" not "program"
-    • "prioritise" not "prioritize"
-    • "organised" not "organized"
-    • "realise" not "realize"
-    • "strategised" not "strategized"
+    extraction_prompt = f"""
+    You are a dairy farm recruitment analyst for New Zealand farms. Analyse the candidate's CV against the job and produce a structured matching report. Do NOT calculate any score.
 
-    Maintain professional, employer-standard terminology and formal tone throughout. Do not use American English spellings.
+    LANGUAGE: Use professional New Zealand English spelling throughout.
 
-    Position Requirements:
+    === INPUTS ===
+
+    Position Details:
     {json.dumps(job_details, indent=2)}
 
     {ideal_candidate_prompt}
 
-    Candidate's Resume:
+    Candidate's CV and Cover Letter:
     {resume_text}
 
-    Follow these steps to evaluate the candidate:
+    === INSTRUCTIONS ===
 
-    STEP 1 – Assess Job Requirements (60%)
-    Score 0–60 based ONLY on how well the candidate meets the essential job requirements.
-    0–20 = Missing critical requirements
-    21–40 = Meets some requirements but gaps exist
-    41–50 = Meets most requirements competently
-    51–60 = Fully meets or exceeds all essential requirements
-    If the candidate lacks any stated non-negotiable requirement, cap this section at 35 maximum.
+    STEP 1: Extract COMPREHENSIVE requirements from the position details.
+    You MUST extract AT LEAST 6 requirements by looking at ALL parts of the job details, not just the "requirements" field. Include:
+    - Each explicitly listed requirement (from requirements array)
+    - Job title relevance (does the candidate have experience in this SPECIFIC role type?)
+    - Years/level of experience expected
+    - Location suitability
+    - Work type compatibility (full-time/part-time)
+    - Any implied skills from the job title (e.g., "Dairy Farm Worker" implies dairy-specific knowledge)
+    - Physical or practical requirements implied by the role
+    - Qualifications or certifications expected in this industry
 
-    STEP 2 – Assess Ideal Candidate Profile (40%)
-    Score 0–40 based on alignment with the ideal traits, leadership ability, initiative, communication, culture fit, ambition, and long-term potential.
-    0–10 = Weak alignment
-    11–20 = Moderate alignment
-    21–30 = Strong alignment
-    31–40 = Exceptional alignment
-    Do NOT give high scores unless there is clear evidence.
-    If no ideal candidate profile is provided, assign a proportional score based on the general professionalism, initiative, communication, and long-term potential evident from the CV and cover letter alone.
+    STEP 2: Match each requirement against the CV.
+    For each requirement, assign:
+    - "strong": The CV has SPECIFIC, DETAILED evidence that DIRECTLY matches. Not vague — must be clearly demonstrated.
+    - "partial": The CV shows RELATED experience but not an exact match. For example, general farming experience when dairy-specific is needed, or a skill is listed but not backed by detailed experience.
+    - "none": No evidence at all in the CV.
 
-    STEP 3 – Calculate Final Score
-    Add both sections for a final score out of 100.
-    IMPORTANT:
-    Use the full range 0–100.
-    Avoid clustering in the 70–85 range.
-    Scores above 90 should be rare and near perfect.
-    Scores between 80 and 90 should be uncommon and for great candidates.
-    Scores between 70 and 80 should be common and for candidates who are a good fit but may lack desired traits.
-    Scores between 60 and 70 should be common and for candidates who could work on the farm but may not be a good match.
-    Scores below 60 should be used when key requirements are missing.
-    Differentiate decisively between candidates.
-    Fit-Score Caps are as follows:
-    - If the candidate has less than the preferred years of experience, then the fit score must not exceed 65.
-    - If the candidate has no dairy farming experience, then the fit score must not exceed 40.
-    - If the candidate is not eligible to work in New Zealand, then the fit score must not exceed 55.
+    IMPORTANT MATCHING RULES:
+    - A skill listed without supporting detail or work experience is "partial", NOT "strong"
+    - General farming experience when dairy-specific is required is "partial", NOT "strong"  
+    - If the CV only has 2 skills and a short work history, it CANNOT strongly match 6+ requirements
+    - Be honest about what the CV actually demonstrates vs what it merely claims
 
-    STEP 4 – Output Format
-    Return a JSON object with this exact structure:
-    {{
-      "AI_fit_score": {{
-        "score": 0-100,
-        "explanation": "Brief explanation of the score, {explanation_instruction}"
-      }},
-      "strengths": [
-        "Specific, evidence-based strength highlighting what the candidate does well relative to both the job and ideal profile, with concrete examples from the CV or cover letter.",
-        "Another specific strength with evidence..."
-      ],
-      "areas_of_development": [
-        "Clear gap relative to job and ideal profile. Assess staff management depth, decision-making exposure, financial awareness, readiness for role, and independent management where relevant. Identify exactly what skills or experiences the candidate needs to acquire. Note any important missing areas such as formal education, visa status, or ability to work in New Zealand.",
-        "Another specific area for development..."
-      ],
-      "summary": "3-5 sentence summary of the candidate's CV and cover letter explaining why they received the fit score they did. For example: John received a fit score of 60 because of his limited dairy farming experience and no prior staff management. Be specific about the candidate by name where possible."
-    }}
+    {"STEP 3: Check each ideal candidate trait against the CV independently. A trait is only matched if there is CLEAR evidence. Listing a skill name alone is NOT enough — there must be demonstrated experience or qualification." if has_ideal else ""}
+
+    Return 3-5 strengths and 3-5 areas_of_development, each referencing specific CV content.
+
+    Return this JSON structure (match_level must be exactly "strong", "partial", or "none"):
+    {json_template}
     """
 
-    response = client.chat.completions.create(
+    response = await async_client.chat.completions.create(
         model="gpt-4o-mini",
-        messages=[{"role": "user", "content": prompt}],
-        response_format={"type": "json_object"}
+        messages=[{"role": "user", "content": extraction_prompt}],
+        response_format={"type": "json_object"},
+        temperature=0.2
     )
 
-    return json.loads(response.choices[0].message.content)
+    analysis = json.loads(response.choices[0].message.content)
+
+    # ============================
+    # PHASE 2: Python calculates score programmatically
+    # ============================
+    
+    requirements = analysis.get("requirement_matches", [])
+    
+    if requirements:
+        total_points = 0
+        max_points = len(requirements) * 10
+
+        for req in requirements:
+            level = req.get("match_level", "none").lower().strip()
+            if level == "strong":
+                total_points += 10
+            elif level == "partial":
+                total_points += 5
+            # "none" = 0
+
+        # Scale to 0-90 range
+        base_score = round((total_points / max_points) * 90) if max_points > 0 else 50
+    else:
+        base_score = 50
+
+    # Small adjustments
+    has_certs = analysis.get("has_relevant_certifications", False)
+    work_elig = analysis.get("work_eligibility_mentioned", False)
+    
+    if has_certs and base_score < 85:
+        base_score = min(base_score + 3, 90)
+    
+    if not work_elig and base_score > 30:
+        base_score = max(base_score - 2, 25)
+    
+    base_score = max(base_score, 5)
+    
+    # Ideal Candidate Bonus (0 to +8)
+    ideal_bonus = 0
+    matched_traits_count = 0
+    total_traits_count = 0
+    
+    if has_ideal:
+        ideal_traits = analysis.get("ideal_trait_matches", [])
+        if ideal_traits:
+            matched_traits_count = sum(1 for t in ideal_traits if t.get("matched", False))
+            total_traits_count = len(ideal_traits)
+            
+            if total_traits_count > 0:
+                match_ratio = matched_traits_count / total_traits_count
+                ideal_bonus = round(match_ratio * 8)  # 0 to +8 bonus
+    
+    final_score = min(base_score + ideal_bonus, 95)  # Cap at 95
+
+    # Build natural explanation
+    candidate_name = analysis.get("candidate_name", "The candidate")
+    strengths = analysis.get("strengths", [])
+    areas = analysis.get("areas_of_development", [])
+    
+    strong_count = sum(1 for r in requirements if r.get("match_level", "").lower().strip() == "strong")
+    partial_count = sum(1 for r in requirements if r.get("match_level", "").lower().strip() == "partial")
+    none_count = sum(1 for r in requirements if r.get("match_level", "").lower().strip() == "none")
+    total_reqs = len(requirements)
+
+    # Natural explanation (no base/bonus breakdown)
+    explanation_parts = []
+    
+    if strong_count > 0:
+        explanation_parts.append(f"{candidate_name} strongly meets {strong_count} of {total_reqs} job requirements")
+    if partial_count > 0:
+        explanation_parts.append(f"partially meets {partial_count}")
+    if none_count > 0:
+        explanation_parts.append(f"does not meet {none_count}")
+    
+    explanation = ", ".join(explanation_parts) + "."
+    
+    if has_ideal and ideal_bonus > 0:
+        explanation += f" Additionally matched {matched_traits_count} of {total_traits_count} ideal candidate traits, which improved the overall score."
+    elif has_ideal and ideal_bonus == 0:
+        explanation += f" Did not match the ideal candidate traits, so the score reflects only job requirement alignment."
+
+    # Build summary
+    summary_parts = [f"{candidate_name} received a fit score of {final_score}."]
+    
+    if strong_count > 0:
+        summary_parts.append(f"The candidate strongly matched {strong_count} of {total_reqs} job requirements.")
+    if partial_count > 0:
+        summary_parts.append(f"{partial_count} requirement(s) were partially matched.")
+    if none_count > 0:
+        summary_parts.append(f"{none_count} requirement(s) had no matching evidence in the CV.")
+    if has_ideal and ideal_bonus > 0:
+        summary_parts.append(f"Matching {matched_traits_count} ideal candidate traits contributed additional points to the score.")
+    elif has_ideal and ideal_bonus == 0:
+        summary_parts.append("The ideal candidate traits were not matched, so no additional points were added.")
+    
+    summary = " ".join(summary_parts)
+
+    return {
+        "AI_fit_score": {
+            "score": final_score,
+            "explanation": explanation
+        },
+        "strengths": strengths if strengths else ["No specific strengths identified from the CV."],
+        "areas_of_development": areas if areas else ["No specific development areas identified."],
+        "summary": summary
+    }

@@ -1,6 +1,6 @@
 import os
 from dotenv import load_dotenv
-from openai import OpenAI
+from openai import OpenAI, AsyncOpenAI
 
 # Load environment variables from .env file
 load_dotenv()
@@ -15,3 +15,4 @@ if not api_key:
     )
 
 client = OpenAI(api_key=api_key)
+async_client = AsyncOpenAI(api_key=api_key)

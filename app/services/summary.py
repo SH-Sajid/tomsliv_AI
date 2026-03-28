@@ -1,6 +1,6 @@
-from app.config import client
+from app.config import async_client
 
-def generate_summary(resume_text: str):
+async def generate_summary(resume_text: str):
     prompt = f"""
     Please prepare a concise professional summary (2-3 sentences) of the candidate's qualifications and suitability for the position.
     The summary should be clear, concise, and provide a professional overview of the candidate's relevant experience and capabilities.
@@ -23,7 +23,7 @@ def generate_summary(resume_text: str):
     Return only the summary text, no JSON formatting needed.
     """
 
-    response = client.chat.completions.create(
+    response = await async_client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[{"role": "user", "content": prompt}]
     )

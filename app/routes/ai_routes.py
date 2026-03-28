@@ -1,3 +1,4 @@
+import asyncio
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Query
 from typing import Optional
 from app.schemas import (
@@ -145,12 +146,14 @@ Or simple text: "3+ years experience in dairy farming with strong animal care sk
         "ideal_candidate": ideal_candidate_data
     }
     
-    # Get analysis from all AI services
+    # Get analysis from all AI services in PARALLEL for faster response
     try:
-        resume_analysis = analyze_resume(combined_resume_text)
-        match_result = match_candidate(combined_job_context, combined_resume_text)
-        summary = generate_summary(combined_resume_text)
-        interview_questions = generate_questions(combined_job_context, combined_resume_text)
+        resume_analysis, match_result, summary, interview_questions = await asyncio.gather(
+            analyze_resume(combined_resume_text),
+            match_candidate(combined_job_context, combined_resume_text),
+            generate_summary(combined_resume_text),
+            generate_questions(combined_job_context, combined_resume_text)
+        )
     except Exception as e:
         raise HTTPException(
             status_code=500, 
@@ -195,7 +198,7 @@ async def create_job(
         # Add the query parameters to job_data for processing
         job_data["jobDescriptionText"] = jobdescription
         job_data["benefitsAndPerksText"] = benefitsAndPerks
-        result = generate_job_content(job_data)
+        result = await generate_job_content(job_data)
         return result
     except Exception as e:
         raise HTTPException(
@@ -222,7 +225,7 @@ async def compare_two_cvs(comparison_request: CVComparisonRequest):
         cv_b = comparison_request.cv_b
         job_context = comparison_request.job_context
         
-        result = compare_cvs(cv_a, cv_b, job_context)
+        result = await compare_cvs(cv_a, cv_b, job_context)
         return result
     except Exception as e:
         raise HTTPException(

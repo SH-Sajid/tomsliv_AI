@@ -1,7 +1,7 @@
-from app.config import client
+from app.config import async_client
 import json
 
-def generate_questions(job_context: dict, resume_text: str):
+async def generate_questions(job_context: dict, resume_text: str):
     """
     Generate interview questions based on job requirements, ideal candidate profile, and resume.
     
@@ -65,7 +65,7 @@ def generate_questions(job_context: dict, resume_text: str):
     Make the questions specific and insightful, {final_instruction}
     """
 
-    response = client.chat.completions.create(
+    response = await async_client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[{"role": "user", "content": prompt}],
         response_format={"type": "json_object"}
