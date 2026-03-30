@@ -106,11 +106,9 @@ Or simple text: "3+ years experience in dairy farming with strong animal care sk
             cv_data = json.loads(cv_json)
             # Convert CV JSON to text format for processing
             resume_text = json.dumps(cv_data, indent=2)
-        except json.JSONDecodeError:
-            raise HTTPException(
-                status_code=400, 
-                detail="Invalid JSON format for cv_json"
-            )
+        except (json.JSONDecodeError, TypeError):
+            # If cv_json is not valid JSON, use it as plain text
+            resume_text = cv_json
     else:
         # Extract text from uploaded file
         try:
