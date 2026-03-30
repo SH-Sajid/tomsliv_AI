@@ -6,8 +6,8 @@ async def match_candidate(job_context: dict, resume_text: str):
     Match candidate against job requirements and ideal candidate profile.
     
     TWO-PHASE APPROACH:
-    Phase 1: AI extracts structured matching data (what matches, what doesn't)
-    Phase 2: Python code calculates the score programmatically (consistent, dynamic)
+    Phase 1: AI extracts structured matching data with priority classification
+    Phase 2: Python code calculates the score with weighted scoring (critical vs preferred)
     """
     
     job_details = job_context.get('job_details', {})
@@ -20,13 +20,14 @@ async def match_candidate(job_context: dict, resume_text: str):
     else:
         ideal_candidate_prompt = "Ideal Candidate Profile: (Not provided)"
 
-    # Build JSON template
+    # Build JSON template with priority field
     if has_ideal:
         json_template = """
     {
       "requirement_matches": [
         {
           "requirement": "requirement text",
+          "priority": "critical",
           "match_level": "strong",
           "evidence": "specific CV evidence"
         }
@@ -51,6 +52,7 @@ async def match_candidate(job_context: dict, resume_text: str):
       "requirement_matches": [
         {
           "requirement": "requirement text",
+          "priority": "critical",
           "match_level": "strong",
           "evidence": "specific CV evidence"
         }
@@ -91,6 +93,18 @@ async def match_candidate(job_context: dict, resume_text: str):
     - Physical or practical requirements implied by the role
     - Qualifications or certifications expected in this industry
 
+    STEP 1b: Classify each requirement by PRIORITY.
+    For each requirement, assign a priority:
+    - "critical": Requirements that are EXPLICITLY stated in the job listing (from requirements array), core job-specific skills directly tied to the job title, and location/work eligibility requirements. These are MUST-HAVE items.
+    - "preferred": Requirements that are IMPLIED, generic, or nice-to-have. For example: general physical fitness, generic soft skills, work type compatibility, or certifications not explicitly demanded.
+
+    IMPORTANT PRIORITY RULES:
+    - Requirements taken DIRECTLY from the job listing's requirements array are ALWAYS "critical"
+    - Skills that are specific to the job title (e.g., milking for a dairy worker) are "critical"
+    - Generic requirements that ANY worker would need (physical fitness, teamwork, reliability) are "preferred"
+    - Location suitability and work eligibility are "critical"
+    - General certifications not explicitly requested are "preferred"
+
     STEP 2: Match each requirement against the CV.
     For each requirement, assign:
     - "strong": The CV has SPECIFIC, DETAILED evidence that DIRECTLY matches. Not vague — must be clearly demonstrated.
@@ -107,7 +121,7 @@ async def match_candidate(job_context: dict, resume_text: str):
 
     Return 3-5 strengths and 3-5 areas_of_development, each referencing specific CV content.
 
-    Return this JSON structure (match_level must be exactly "strong", "partial", or "none"):
+    Return this JSON structure (match_level must be exactly "strong", "partial", or "none"; priority must be exactly "critical" or "preferred"):
     {json_template}
     """
 
@@ -121,39 +135,63 @@ async def match_candidate(job_context: dict, resume_text: str):
     analysis = json.loads(response.choices[0].message.content)
 
     # ============================
-    # PHASE 2: Python calculates score programmatically
+    # PHASE 2: Weighted score calculation
     # ============================
     
     requirements = analysis.get("requirement_matches", [])
     
     if requirements:
         total_points = 0
-        max_points = len(requirements) * 10
+        max_points = 0
 
         for req in requirements:
+            is_critical = req.get("priority", "preferred").lower().strip() == "critical"
             level = req.get("match_level", "none").lower().strip()
-            if level == "strong":
-                total_points += 10
-            elif level == "partial":
-                total_points += 5
-            # "none" = 0
+            
+            if is_critical:
+                # Critical requirements worth 3x more
+                max_points += 15
+                if level == "strong":
+                    total_points += 15
+                elif level == "partial":
+                    total_points += 6
+                # "none" = 0
+            else:
+                # Preferred requirements worth less
+                max_points += 5
+                if level == "strong":
+                    total_points += 5
+                elif level == "partial":
+                    total_points += 2
+                # "none" = 0
 
-        # Scale to 0-90 range
-        base_score = round((total_points / max_points) * 90) if max_points > 0 else 50
+        # Scale to 0-82 range (without ideal candidate match, max score is 82)
+        base_score = round((total_points / max_points) * 82) if max_points > 0 else 40
+
+        # Critical-gap penalty: if most critical requirements are unmet, penalise heavily
+        critical_reqs = [r for r in requirements if r.get("priority", "preferred").lower().strip() == "critical"]
+        if critical_reqs:
+            critical_none_count = sum(1 for r in critical_reqs if r.get("match_level", "none").lower().strip() == "none")
+            if critical_none_count > len(critical_reqs) / 2:
+                # More than half of critical requirements have no match — heavy penalty
+                base_score = round(base_score * 0.6)
     else:
-        base_score = 50
+        base_score = 40
 
     # Small adjustments
     has_certs = analysis.get("has_relevant_certifications", False)
     work_elig = analysis.get("work_eligibility_mentioned", False)
     
-    if has_certs and base_score < 85:
-        base_score = min(base_score + 3, 90)
+    if has_certs and base_score < 78:
+        base_score = min(base_score + 3, 82)
     
     if not work_elig and base_score > 30:
         base_score = max(base_score - 2, 25)
     
     base_score = max(base_score, 5)
+    
+    # Hard cap: without ideal candidate match, base score cannot exceed 82
+    base_score = min(base_score, 82)
     
     # Ideal Candidate Bonus (0 to +8)
     ideal_bonus = 0
@@ -168,7 +206,7 @@ async def match_candidate(job_context: dict, resume_text: str):
             
             if total_traits_count > 0:
                 match_ratio = matched_traits_count / total_traits_count
-                ideal_bonus = round(match_ratio * 8)  # 0 to +8 bonus
+                ideal_bonus = round(match_ratio * 13)  # 0 to +13 bonus (can push score from 82 up to 95)
     
     final_score = min(base_score + ideal_bonus, 95)  # Cap at 95
 
@@ -181,12 +219,19 @@ async def match_candidate(job_context: dict, resume_text: str):
     partial_count = sum(1 for r in requirements if r.get("match_level", "").lower().strip() == "partial")
     none_count = sum(1 for r in requirements if r.get("match_level", "").lower().strip() == "none")
     total_reqs = len(requirements)
+    
+    # Count critical vs preferred stats
+    critical_reqs = [r for r in requirements if r.get("priority", "preferred").lower().strip() == "critical"]
+    critical_strong = sum(1 for r in critical_reqs if r.get("match_level", "").lower().strip() == "strong")
+    critical_total = len(critical_reqs)
 
     # Natural explanation (no base/bonus breakdown)
     explanation_parts = []
     
+    if critical_total > 0:
+        explanation_parts.append(f"{candidate_name} strongly meets {critical_strong} of {critical_total} critical job requirements")
     if strong_count > 0:
-        explanation_parts.append(f"{candidate_name} strongly meets {strong_count} of {total_reqs} job requirements")
+        explanation_parts.append(f"strongly matches {strong_count} of {total_reqs} total requirements")
     if partial_count > 0:
         explanation_parts.append(f"partially meets {partial_count}")
     if none_count > 0:
@@ -202,8 +247,10 @@ async def match_candidate(job_context: dict, resume_text: str):
     # Build summary
     summary_parts = [f"{candidate_name} received a fit score of {final_score}."]
     
+    if critical_total > 0:
+        summary_parts.append(f"Of {critical_total} critical requirements, {critical_strong} were strongly matched.")
     if strong_count > 0:
-        summary_parts.append(f"The candidate strongly matched {strong_count} of {total_reqs} job requirements.")
+        summary_parts.append(f"The candidate strongly matched {strong_count} of {total_reqs} total job requirements.")
     if partial_count > 0:
         summary_parts.append(f"{partial_count} requirement(s) were partially matched.")
     if none_count > 0:
