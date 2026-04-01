@@ -1,5 +1,15 @@
 from app.config import async_client
 import json
+import hashlib
+
+# In-memory cache: same CV + job inputs always return the same score
+_match_cache: dict[str, dict] = {}
+
+def _build_cache_key(job_context: dict, resume_text: str) -> str:
+    """Build a deterministic cache key from job context and resume text."""
+    # Sort keys to ensure consistent serialisation regardless of dict ordering
+    normalised_input = json.dumps(job_context, sort_keys=True) + "||" + resume_text.strip()
+    return hashlib.sha256(normalised_input.encode("utf-8")).hexdigest()
 
 async def match_candidate(job_context: dict, resume_text: str):
     """
@@ -8,7 +18,14 @@ async def match_candidate(job_context: dict, resume_text: str):
     TWO-PHASE APPROACH:
     Phase 1: AI extracts structured matching data with priority classification
     Phase 2: Python code calculates the score with weighted scoring (critical vs preferred)
+    
+    Results are cached by input hash so the same CV + job always returns the same score.
     """
+    
+    # Check cache first — identical inputs always return the same result
+    cache_key = _build_cache_key(job_context, resume_text)
+    if cache_key in _match_cache:
+        return _match_cache[cache_key]
     
     job_details = job_context.get('job_details', {})
     ideal_candidate = job_context.get('ideal_candidate', {})
@@ -129,7 +146,8 @@ async def match_candidate(job_context: dict, resume_text: str):
         model="gpt-4o-mini",
         messages=[{"role": "user", "content": extraction_prompt}],
         response_format={"type": "json_object"},
-        temperature=0.2
+        temperature=0,
+        seed=42
     )
 
     analysis = json.loads(response.choices[0].message.content)
@@ -262,7 +280,7 @@ async def match_candidate(job_context: dict, resume_text: str):
     
     summary = " ".join(summary_parts)
 
-    return {
+    result = {
         "AI_fit_score": {
             "score": final_score,
             "explanation": explanation
@@ -271,3 +289,8 @@ async def match_candidate(job_context: dict, resume_text: str):
         "areas_of_development": areas if areas else ["No specific development areas identified."],
         "summary": summary
     }
+
+    # Cache the result so identical inputs always return the same score
+    _match_cache[cache_key] = result
+
+    return result
